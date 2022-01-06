@@ -1,13 +1,11 @@
 # -*- coding: utf-8 -*-    
 from cv2 import cv2
-from yaml.tokens import Token
-from telegram import *
+from telegram import telegram_bot_sendtext
 from captcha.solveCaptcha import solveCaptcha
 from os import listdir
 from src.logger import logger, loggerMapClicked
 from random import randint
 from random import random
-from pyclick import HumanClicker
 
 import numpy as np
 import mss
@@ -15,14 +13,8 @@ import pyautogui
 import time
 import sys
 import yaml
-import pytesseract as ocr
-import telegram
 
-
-# Version: 03/01/2022
-
-# initialize HumanClicker object
-hc = HumanClicker()
+# Version: 31/12/2021
 
 account = '💳 - _Account 01_'
 #account = '💳 - _Account 02_'
@@ -32,35 +24,7 @@ info = """
 >>---> Some configs can be found in the config.yaml file."""
 
 print(info)
-
-TELEGRAM_BOT_TOKEN = "5004237424:AAGTflh1M_cRKwubi3aNi5L1-i4Ncqg_TbQ"
-TELEGRAM_CHAT_ID = "1326805236"
-
-bot = telegram.bot(Token=TELEGRAM_BOT_TOKEN)
-
-def telegram_bot_sendtext(bot_message, num_try=0):
-    global bot
-    try:
-        return bot.send_message (chat_id=TELEGRAM_CHAT_ID, text=bot_message)
-    except:
-        if num_try == 1:
-            bot = telegram.Bot(token=TELEGRAM_BOT_TOKEN)
-            return telegram_bot_sendtext(bot_message, 1)
-        return 0
-
-
-def telegram_bot_sendphoto(photo_path, num_try=0):
-    global bot
-    try:
-        return bot.send_photo(chat_id=TELEGRAM_CHAT_ID, photo=open(photo_path, "rb"))
-    except:
-        if num_try == 1:
-            bot = telegram.Bot(token=TELEGRAM_BOT_TOKEN)
-            return telegram_bot_sendphoto(photo_path, 1)
-        return 0
-
-
-message = telegram_bot_sendtext (account + " - 🔌 Bot inicializado. \n\n 💰 É hora de faturar alguns BCoins!!!")
+message = telegram_bot_sendtext(account + "\n\n 🔌 Bot Started " + ".\n 💰 It's time to earn some BCoins!!!")
 time.sleep(4)
 
 if __name__ == '__main__':
@@ -79,7 +43,6 @@ pyautogui.FAILSAFE = False
 hero_clicks = 0
 login_attempts = 0
 last_log_is_progress = False
-saldo_atual = 0.0
 new_maps = 0
 
 def addRandomness(n, randomn_factor_size=None):
@@ -140,13 +103,11 @@ if ch['enable']:
 # sign_btn_img = cv2.imread('targets/select-wallet-2.png')
 # new_map_btn_img = cv2.imread('targets/new-map.png')
 # green_bar = cv2.imread('targets/green-bar.png')
-# puzzle_img = cv2.imread('targets/puzzle.png')
-# piece = cv2.imread('targets/piece.png')
-# chest = cv2.imread('targets/chest.png')
-# bcoin_logo = cv2.imread('targets/bcoin-logo.png')
-slider = cv2.imread('targets/slider.png')
 full_stamina = cv2.imread('targets/full-stamina.png')
 robot = cv2.imread('targets/robot.png')
+# puzzle_img = cv2.imread('targets/puzzle.png')
+# piece = cv2.imread('targets/piece.png')
+slider = cv2.imread('targets/slider.png')
 
 def show(rectangles, img = None):
 
@@ -338,7 +299,7 @@ def goToGame():
     clickBtn(images['x'])
 
     clickBtn(images['treasure-hunt-icon'])
-       
+    
 def refreshHeroesPositions():
 
     logger('🔃 Refreshing Heroes Positions')
@@ -453,7 +414,7 @@ def refreshHeroes():
     buttonsClicked = 1
     empty_scrolls_attempts = c['scroll_attemps']
 
-    while(empty_scrolls_attempts > 0):
+    while(empty_scrolls_attempts >0):
         if c['select_heroes_mode'] == 'full':
             buttonsClicked = clickFullBarButtons()
         elif c['select_heroes_mode'] == 'green':
@@ -464,7 +425,7 @@ def refreshHeroes():
         sendHeroesHome()
 
         if buttonsClicked == 0:
-            empty_scrolls_attempts -= 1
+            empty_scrolls_attempts = empty_scrolls_attempts - 1
         scroll()
         time.sleep(2)
         
@@ -478,8 +439,7 @@ def main():
 
     last = {
     "login" : 0,
-    "heroes" : 0,    
-    "ssaldo" :0,
+    "heroes" : 0,
     "new_map" : 0,
     "check_for_captcha" : 0,
     "refresh_heroes" : 0
@@ -509,12 +469,9 @@ def main():
             if clickBtn(images['new-map']):
                 loggerMapClicked()
                 new_maps += 1
-                #message = telegram_bot_sendtext(account + "\n\n 🎉 - Congratullations. You complete more one Map. \n 🗺️ - Total: " + str(new_maps) + " Maps \n 💰 - You have xx BCoins (Comming Soon)")
-                goSaldo()
-        #if now - last["ssaldo"] > addRandomness(t['get_saldo'] * 60):
-        #   last["ssaldo"] = now
-        #    goSaldo1()
-        
+                message = telegram_bot_sendtext(account + "\n\n 🎉 - Congratullations. You complete more one Map. \n 🗺️ - Total: " + str(new_maps) + " Maps \n 💰 - You have xx BCoins (Comming Soon)")
+                message = telegram_bot_sendtext(logger)
+                
         if now - last["refresh_heroes"] > addRandomness( t['refresh_heroes_positions'] * 60):
             solveCaptcha(pause)
             last["refresh_heroes"] = now
@@ -524,48 +481,6 @@ def main():
         logger(None, progress_indicator=True)
         sys.stdout.flush()
         time.sleep(1)
-        
-def goSaldo():
-    global saldo_atual, message
-    # time.sleep(3)
-    clickBtn(images['x'])
-    logger('🔃 Checking the balance of BCoins')
-    message = telegram_bot_sendtext(account + "\n\n 🤑💸🪙💵 - Checking the balance of BCoins")
-    clickBtn(images['chest'])
-    # print da tela
-    #test = telegram_bot_sendtext("Saldo de BCoins atualizado:")
-    time.sleep(5)
-    # clickBtn(images['bcoin_logo'])
-    
-    i = 10
-    coins_pos = positions(images['bcoin_logo'], threshold=ct['default'])
-    while(len(coins_pos) == 0):
-        if i <= 0:
-            break
-        i -= 1
-        coins_pos = positions(images['bcoin_logo'], threshold=ct['default'])
-        time.sleep(5)
-    
-    if(len(coins_pos) == 0):
-        logger("Saldo não encontrado.")
-        message = telegram_bot_sendtext("Erro ao identificar saldo.")
-        clickBtn(images['x'])
-        return
-
-    # a partir da imagem do bcoin calcula a area do quadrado para print
-    k,l,m,n = coins_pos[0]
-    k -= 44
-    l += 130
-    m = 200
-    n = 50
-
-    myScreen = pyautogui.screenshot(region=(k, l, m, n))
-    myScreen.save(r'C:\Users\Fred\Desktop\bombcrypto-bot-main\saldo\saldo1.png')
-
-    logger('🔃 Saldo de BCOIN enviado')
-    message = telegram_bot_sendtext("Erro ao identificar saldo.")
-    clickBtn(images['x'])
-            
 
 main()
 
