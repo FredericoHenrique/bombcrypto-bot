@@ -1,56 +1,67 @@
 # -*- coding: utf-8 -*-    
 from cv2 import cv2
-
+from yaml.tokens import Token
+from telegram import *
 from captcha.solveCaptcha import solveCaptcha
-
 from os import listdir
 from src.logger import logger, loggerMapClicked
 from random import randint
 from random import random
+from pyclick import HumanClicker
 
 import numpy as np
 import mss
 import pyautogui
 import time
 import sys
-
 import yaml
+import pytesseract as ocr
+import telegram
 
 
-cat = """
-                                                _
-                                                \`*-.
-                                                 )  _`-.
-                                                .  : `. .
-                                                : _   '  \\
-                                                ; *` _.   `*-._
-                                                `-.-'          `-.
-                                                  ;       `       `.
-                                                  :.       .        \\
-                                                  . \  .   :   .-'   .
-                                                  '  `+.;  ;  '      :
-                                                  :  '  |    ;       ;-.
-                                                  ; '   : :`-:     _.`* ;
-                                               .*' /  .*' ; .*`- +'  `*'
-                                               `*-*   `*-*  `*-*'
-=========================================================================
-========== 💰 Have I helped you in any way? All I ask is a tip! 🧾 ======
-========== ✨ Faça sua boa ação de hoje, manda aquela gorjeta! 😊 =======
-=========================================================================
-======================== vvv BCOIN BUSD BNB vvv =========================
-============== 0xbd06182D8360FB7AC1B05e871e56c76372510dDf ===============
-=========================================================================
-===== https://www.paypal.com/donate?hosted_button_id=JVYSC6ZYCNQQQ ======
-=========================================================================
+# Version: 03/01/2022
 
+# initialize HumanClicker object
+hc = HumanClicker()
+
+account = '💳 - _Account 01_'
+#account = '💳 - _Account 02_'
+#account = '💳 - _Account 03_'
+info = """
 >>---> Press ctrl + c to kill the bot.
-
 >>---> Some configs can be found in the config.yaml file."""
 
+print(info)
 
-print(cat)
+TELEGRAM_BOT_TOKEN = "5004237424:AAGTflh1M_cRKwubi3aNi5L1-i4Ncqg_TbQ"
+TELEGRAM_CHAT_ID = "1326805236"
+
+bot = telegram.bot(Token=TELEGRAM_BOT_TOKEN)
+
+def telegram_bot_sendtext(bot_message, num_try=0):
+    global bot
+    try:
+        return bot.send_message (chat_id=TELEGRAM_CHAT_ID, text=bot_message)
+    except:
+        if num_try == 1:
+            bot = telegram.Bot(token=TELEGRAM_BOT_TOKEN)
+            return telegram_bot_sendtext(bot_message, 1)
+        return 0
+
+
+def telegram_bot_sendphoto(photo_path, num_try=0):
+    global bot
+    try:
+        return bot.send_photo(chat_id=TELEGRAM_CHAT_ID, photo=open(photo_path, "rb"))
+    except:
+        if num_try == 1:
+            bot = telegram.Bot(token=TELEGRAM_BOT_TOKEN)
+            return telegram_bot_sendphoto(photo_path, 1)
+        return 0
+
+
+message = telegram_bot_sendtext (account + " - 🔌 Bot inicializado. \n\n 💰 É hora de faturar alguns BCoins!!!")
 time.sleep(4)
-
 
 if __name__ == '__main__':
     stream = open("config.yaml", 'r')
@@ -60,18 +71,16 @@ ct = c['threshold']
 ch = c['home']
 
 if not ch['enable']:
-    print('>>---> Home feature not enabled')
-print('\n')
+    print('>>---> Home feature not enabled' + '\n')
 
 pause = c['time_intervals']['interval_between_moviments']
 pyautogui.PAUSE = pause
-
 pyautogui.FAILSAFE = False
 hero_clicks = 0
 login_attempts = 0
 last_log_is_progress = False
-
-
+saldo_atual = 0.0
+new_maps = 0
 
 def addRandomness(n, randomn_factor_size=None):
     if randomn_factor_size is None:
@@ -88,7 +97,6 @@ def addRandomness(n, randomn_factor_size=None):
 
 def moveToWithRandomness(x,y,t):
     pyautogui.moveTo(addRandomness(x,10),addRandomness(y,10),t+random()/2)
-
 
 def remove_suffix(input_string, suffix):
     if suffix and input_string.endswith(suffix):
@@ -132,14 +140,13 @@ if ch['enable']:
 # sign_btn_img = cv2.imread('targets/select-wallet-2.png')
 # new_map_btn_img = cv2.imread('targets/new-map.png')
 # green_bar = cv2.imread('targets/green-bar.png')
-full_stamina = cv2.imread('targets/full-stamina.png')
-
-robot = cv2.imread('targets/robot.png')
 # puzzle_img = cv2.imread('targets/puzzle.png')
 # piece = cv2.imread('targets/piece.png')
+# chest = cv2.imread('targets/chest.png')
+# bcoin_logo = cv2.imread('targets/bcoin-logo.png')
 slider = cv2.imread('targets/slider.png')
-
-
+full_stamina = cv2.imread('targets/full-stamina.png')
+robot = cv2.imread('targets/robot.png')
 
 def show(rectangles, img = None):
 
@@ -154,10 +161,6 @@ def show(rectangles, img = None):
     # cv2.rectangle(img, (result[0], result[1]), (result[0] + result[2], result[1] + result[3]), (255,50,255), 2)
     cv2.imshow('img',img)
     cv2.waitKey(0)
-
-
-
-
 
 def clickBtn(img,name=None, timeout=3, threshold = ct['default']):
     logger(None, progress_indicator=True)
@@ -185,7 +188,6 @@ def clickBtn(img,name=None, timeout=3, threshold = ct['default']):
         pyautogui.click()
         return True
         print("THIS SHOULD NOT PRINT")
-
 
 def printSreen():
     with mss.mss() as sct:
@@ -327,7 +329,7 @@ def goToHeroes():
     time.sleep(1)
     clickBtn(images['hero-icon'])
     time.sleep(1)
-    solveCaptcha(pause)
+    solveCaptcha(pause)    
 
 def goToGame():
     # in case of server overload popup
@@ -336,7 +338,7 @@ def goToGame():
     clickBtn(images['x'])
 
     clickBtn(images['treasure-hunt-icon'])
-
+       
 def refreshHeroesPositions():
 
     logger('🔃 Refreshing Heroes Positions')
@@ -345,13 +347,14 @@ def refreshHeroesPositions():
 
     # time.sleep(3)
     clickBtn(images['treasure-hunt-icon'])
-
+    
 def login():
-    global login_attempts
+    global login_attempts, message    
     logger('😿 Checking if game has disconnected')
 
     if login_attempts > 3:
         logger('🔃 Too many login attempts, refreshing')
+        message = telegram_bot_sendtext(account + "\n\n 🛑 - Bomb off? Check the game channel")
         login_attempts = 0
         pyautogui.hotkey('ctrl','f5')
         return
@@ -359,17 +362,18 @@ def login():
     if clickBtn(images['connect-wallet'], name='connectWalletBtn', timeout = 10):
         logger('🎉 Connect wallet button detected, logging in!')
         solveCaptcha(pause)
-        login_attempts = login_attempts + 1
+        login_attempts += 1
         #TODO mto ele da erro e poco o botao n abre
         # time.sleep(10)
 
     if clickBtn(images['select-wallet-2'], name='sign button', timeout=8):
         # sometimes the sign popup appears imediately
-        login_attempts = login_attempts + 1
+        login_attempts += 1
         # print('sign button clicked')
         # print('{} login attempt'.format(login_attempts))
         if clickBtn(images['treasure-hunt-icon'], name='teasureHunt', timeout = 15):
             # print('sucessfully login, treasure hunt btn clicked')
+            message = telegram_bot_sendtext(account + "\n\n 🟢 - Sucessfully login")
             login_attempts = 0
         return
         # click ok button
@@ -386,12 +390,13 @@ def login():
         # time.sleep(20)
 
     if clickBtn(images['select-wallet-2'], name='signBtn', timeout = 20):
-        login_attempts = login_attempts + 1
+        login_attempts += 1
         # print('sign button clicked')
         # print('{} login attempt'.format(login_attempts))
         # time.sleep(25)
         if clickBtn(images['treasure-hunt-icon'], name='teasureHunt', timeout=25):
             # print('sucessfully login, treasure hunt btn clicked')
+            message = telegram_bot_sendtext(account + "\n\n 🟢 - Sucessfully login")
             login_attempts = 0
         # time.sleep(15)
 
@@ -399,8 +404,6 @@ def login():
         pass
         # time.sleep(15)
         # print('ok button clicked')
-
-
 
 def sendHeroesHome():
     if not ch['enable']:
@@ -435,12 +438,8 @@ def sendHeroesHome():
         else:
             print('hero already home, or home full(no dark home button)')
 
-
-
-
-
 def refreshHeroes():
-    logger('🏢 Search for heroes to work')
+    logger('🦸 Search for heroes to work')
 
     goToHeroes()
 
@@ -454,7 +453,7 @@ def refreshHeroes():
     buttonsClicked = 1
     empty_scrolls_attempts = c['scroll_attemps']
 
-    while(empty_scrolls_attempts >0):
+    while(empty_scrolls_attempts > 0):
         if c['select_heroes_mode'] == 'full':
             buttonsClicked = clickFullBarButtons()
         elif c['select_heroes_mode'] == 'green':
@@ -465,26 +464,29 @@ def refreshHeroes():
         sendHeroesHome()
 
         if buttonsClicked == 0:
-            empty_scrolls_attempts = empty_scrolls_attempts - 1
+            empty_scrolls_attempts -= 1
         scroll()
         time.sleep(2)
+        
     logger('💪 {} heroes sent to work'.format(hero_clicks))
     goToGame()
 
-
 def main():
+    global new_maps, message
     time.sleep(5)
     t = c['time_intervals']
 
     last = {
     "login" : 0,
-    "heroes" : 0,
+    "heroes" : 0,    
+    "ssaldo" :0,
     "new_map" : 0,
     "check_for_captcha" : 0,
     "refresh_heroes" : 0
     }
 
     while True:
+        
         now = time.time()
 
         if now - last["check_for_captcha"] > addRandomness(t['check_for_captcha'] * 60):
@@ -499,14 +501,20 @@ def main():
             sys.stdout.flush()
             last["login"] = now
             login()
+            
 
         if now - last["new_map"] > t['check_for_new_map_button']:
             last["new_map"] = now
 
             if clickBtn(images['new-map']):
                 loggerMapClicked()
-
-
+                new_maps += 1
+                #message = telegram_bot_sendtext(account + "\n\n 🎉 - Congratullations. You complete more one Map. \n 🗺️ - Total: " + str(new_maps) + " Maps \n 💰 - You have xx BCoins (Comming Soon)")
+                goSaldo()
+        #if now - last["ssaldo"] > addRandomness(t['get_saldo'] * 60):
+        #   last["ssaldo"] = now
+        #    goSaldo1()
+        
         if now - last["refresh_heroes"] > addRandomness( t['refresh_heroes_positions'] * 60):
             solveCaptcha(pause)
             last["refresh_heroes"] = now
@@ -514,20 +522,55 @@ def main():
 
         #clickBtn(teasureHunt)
         logger(None, progress_indicator=True)
-
         sys.stdout.flush()
-
         time.sleep(1)
+        
+def goSaldo():
+    global saldo_atual, message
+    # time.sleep(3)
+    clickBtn(images['x'])
+    logger('🔃 Checking the balance of BCoins')
+    message = telegram_bot_sendtext(account + "\n\n 🤑💸🪙💵 - Checking the balance of BCoins")
+    clickBtn(images['chest'])
+    # print da tela
+    #test = telegram_bot_sendtext("Saldo de BCoins atualizado:")
+    time.sleep(5)
+    # clickBtn(images['bcoin_logo'])
+    
+    i = 10
+    coins_pos = positions(images['bcoin_logo'], threshold=ct['default'])
+    while(len(coins_pos) == 0):
+        if i <= 0:
+            break
+        i -= 1
+        coins_pos = positions(images['bcoin_logo'], threshold=ct['default'])
+        time.sleep(5)
+    
+    if(len(coins_pos) == 0):
+        logger("Saldo não encontrado.")
+        message = telegram_bot_sendtext("Erro ao identificar saldo.")
+        clickBtn(images['x'])
+        return
 
+    # a partir da imagem do bcoin calcula a area do quadrado para print
+    k,l,m,n = coins_pos[0]
+    k -= 44
+    l += 130
+    m = 200
+    n = 50
 
+    myScreen = pyautogui.screenshot(region=(k, l, m, n))
+    myScreen.save(r'C:\Users\Fred\Desktop\bombcrypto-bot-main\saldo\saldo1.png')
+
+    logger('🔃 Saldo de BCOIN enviado')
+    message = telegram_bot_sendtext("Erro ao identificar saldo.")
+    clickBtn(images['x'])
+            
 
 main()
-
 
 #cv2.imshow('img',sct_img)
 #cv2.waitKey()
 
 # colocar o botao em pt
 # soh resetar posiçoes se n tiver clickado em newmap em x segundos
-
-
