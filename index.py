@@ -1,18 +1,25 @@
 # -*- coding: utf-8 -*-    
 from cv2 import cv2
-from telegram import telegram_bot_sendtext
+from telegram import *
 from captcha.solveCaptcha import solveCaptcha
 from os import listdir
 from src.logger import logger, loggerMapClicked
 from random import randint
 from random import random
+from datetime import datetime
 
+import os
 import numpy as np
 import mss
 import pyautogui
 import time
 import sys
 import yaml
+import datetime
+import cv2
+import pytesseract
+import pygetwindow
+
 
 # Version: 31/12/2021
 
@@ -24,8 +31,10 @@ info = """
 >>---> Some configs can be found in the config.yaml file."""
 
 print(info)
-message = telegram_bot_sendtext(account + "\n\n 🔌 Bot Started " + ".\n 💰 It's time to earn some BCoins!!!")
+# message = telegram_bot_sendtext(account + "\n\n 🔌 Bot Started " + ".\n 💰 It's time to earn some BCoins!!!")
 time.sleep(4)
+
+
 
 if __name__ == '__main__':
     stream = open("config.yaml", 'r')
@@ -44,6 +53,7 @@ hero_clicks = 0
 login_attempts = 0
 last_log_is_progress = False
 new_maps = 0
+saldo_atual = 0.0
 
 def addRandomness(n, randomn_factor_size=None):
     if randomn_factor_size is None:
@@ -103,10 +113,10 @@ if ch['enable']:
 # sign_btn_img = cv2.imread('targets/select-wallet-2.png')
 # new_map_btn_img = cv2.imread('targets/new-map.png')
 # green_bar = cv2.imread('targets/green-bar.png')
-full_stamina = cv2.imread('targets/full-stamina.png')
-robot = cv2.imread('targets/robot.png')
 # puzzle_img = cv2.imread('targets/puzzle.png')
 # piece = cv2.imread('targets/piece.png')
+full_stamina = cv2.imread('targets/full-stamina.png')
+robot = cv2.imread('targets/robot.png')
 slider = cv2.imread('targets/slider.png')
 
 def show(rectangles, img = None):
@@ -191,7 +201,6 @@ def scroll():
         pyautogui.scroll(-c['scroll_size'])
     else:
         pyautogui.dragRel(0,-c['click_and_drag_amount'],duration=1, button='left')
-
 
 def clickButtons():
     buttons = positions(images['go-work'], threshold=ct['go_to_work_btn'])
@@ -432,23 +441,136 @@ def refreshHeroes():
     logger('💪 {} heroes sent to work'.format(hero_clicks))
     goToGame()
 
+def balance():
+    global saldo_atual, message
+    pytesseract.pytesseract.tesseract_cmd = "C:\Program Files\Tesseract-OCR\Tesseract.exe"
+    clickBtn(images['chest'])
+
+    i = 10
+    coins_pos = positions(images['coin-icon'], threshold=ct['default'])
+    while(len(coins_pos) == 0):
+        if i <= 0:
+            break
+        i = i - 1
+        coins_pos = positions(images['coin-icon'], threshold=ct['default'])
+        time.sleep(5)
+    
+    if(len(coins_pos) == 0):
+        logger("Saldo não encontrado.")
+        clickBtn(images['x'])
+        return
+
+    # a partir da imagem do bcoin calcula a area do quadrado para print
+    k,l,m,n = coins_pos[0]
+    k -= 44
+    l +=  130
+    m = 200
+    n = 50
+
+    myScreen = pyautogui.screenshot(region=(k, l, m, n))
+    img_dir = os.path.dirname(os.path.realpath(__file__)) + r'\targets\saldo1.png'
+    myScreen.save(img_dir)
+    # Lendo arquivo gerado
+    img = cv2.imread(r"D:\Estudos\UDEMY\GIT\bombcrypto-bot\targets\saldo1.png")
+    # Print resultado
+    print(pytesseract.image_to_string(img))
+    time.sleep(2)
+        
+    clickBtn(images['x'])
+    
+def getDifference(then, now=datetime.datetime.now(), interval="horas"):
+
+    duration = now - then
+    duration_in_s = duration.total_seconds()
+
+    # Date and Time constants
+    yr_ct = 365 * 24 * 60 * 60  # 31536000
+    day_ct = 24 * 60 * 60  # 86400
+    hour_ct = 60 * 60  # 3600
+    minute_ct = 60
+
+    def yrs():
+        return divmod(duration_in_s, yr_ct)[0]
+
+    def days():
+        return divmod(duration_in_s, day_ct)[0]
+
+    def hrs():
+        return divmod(duration_in_s, hour_ct)[0]
+
+    def mins():
+        return divmod(duration_in_s, minute_ct)[0]
+
+    def secs():
+        return duration_in_s
+
+    return {
+        "anos": int(yrs()),
+        "dias": int(days()),
+        "horas": int(hrs()),
+        "minutos": int(mins()),
+        "segundos": int(secs()),
+    }[interval]
+    
+def timeInTheMap():
+    try:
+        dateStartMap = None
+        way = (os.path.dirname(os.path.realpath(__file__)) + r"D:\Estudos\UDEMY\GIT\bombcrypto-bot\tempo_mapa.txt")
+        with open(way, "r") as text_file:
+            dateStartMap = text_file.readline()
+            if dateStartMap == "":
+                dateStartMap = datetime.now()
+
+            if not isinstance(dateStartMap, datetime):
+                dateStartMap = datetime.strptime(dateStartMap, "%Y-%m-%d %H:%M:%S.%f")
+            interval = "horas"
+            spentHours = getDifference(
+                dateStartMap, now=datetime.now(), interval=interval
+            )
+            if spentHours == 0:
+                interval = "minutos"
+                spentHours = getDifference(dateStartMap, now=datetime.now(), interval=interval)
+            if spentHours == 0:
+                interval = "segundos"
+                spentHours = getDifference(dateStartMap, now=datetime.now(), interval=interval)
+
+            telegram_bot_sendtext(
+                f"It took you {spentHours} {interval} to complete the map"
+            )
+        with open(way, "w") as textFileWrite:
+            dateStartMap = datetime.now()
+            textFileWrite.write(str(dateStartMap))
+
+    except:
+        logger("Failed to get map completion time information.")
+
 def main():
     global new_maps, message
     time.sleep(5)
     t = c['time_intervals']
 
-    last = {
-    "login" : 0,
-    "heroes" : 0,
-    "new_map" : 0,
-    "check_for_captcha" : 0,
-    "refresh_heroes" : 0
-    }
+    windows = []
+    i = 0
+   
+    for w in pygetwindow.getWindowsWithTitle('bombcrypto - Google Chrome'):
+        windows.append({
+            "window": w,
+            "login" : 0,
+            "heroes" : 0,
+            "new_map" : 0,
+            "check_for_captcha" : 0,
+            "posicao" : i,
+            "refresh_heroes" : 0
+            })
+        i+=1
 
-    while True:
-        
+    while True:        
         now = time.time()
-
+        
+        for last in windows:
+           last["window"].activate()
+           time.sleep(2)    
+        
         if now - last["check_for_captcha"] > addRandomness(t['check_for_captcha'] * 60):
             last["check_for_captcha"] = now
             solveCaptcha(pause)
@@ -468,9 +590,10 @@ def main():
 
             if clickBtn(images['new-map']):
                 loggerMapClicked()
+                timeInTheMap()
+                balance()
                 new_maps += 1
                 message = telegram_bot_sendtext(account + "\n\n 🎉 - Congratullations. You complete more one Map. \n 🗺️ - Total: " + str(new_maps) + " Maps \n 💰 - You have xx BCoins (Comming Soon)")
-                message = telegram_bot_sendtext(logger)
                 
         if now - last["refresh_heroes"] > addRandomness( t['refresh_heroes_positions'] * 60):
             solveCaptcha(pause)
