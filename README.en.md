@@ -1,4 +1,8 @@
-  
+mpcabete bot fork - https://github.com/mpcabete/bombcrypto-bot
+# my updates
+
+Implemented the TELEGRAM class to send a message (Only sends a text message)
+Momentarily tripled the functions to run on 3 accounts at the same time (Soon we will have the refactoring) 
 # About:
   This is an open-source bot, the code is open for anyone to see, fork and
 update.

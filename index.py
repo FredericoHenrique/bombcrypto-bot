@@ -31,10 +31,6 @@ cat = """
 >>---> Press ctrl + c to kill the bot.
 >>---> Some configs can be found in the config.yaml file."""
 
-account = '💳 - _Account 01_'
-#account = '💳 - _Account 02_'
-#account = '💳 - _Account 03_'
-
 def addRandomness(n, randomn_factor_size=None):
     """Returns n with randomness
     Parameters:
@@ -294,13 +290,13 @@ def refreshHeroesPositions():
     # time.sleep(3)
     clickBtn(images['treasure-hunt-icon'])
 
-def login(account):
+def login(account, now):
     global login_attempts, message
     logger('😿 Checking if game has disconnected')   
 
     if login_attempts > 3:
         logger('🔃 Too many login attempts, refreshing')
-        message = telegram_bot_sendtext("Account " + str(account) + " - CRITICAL\n\n 🛑 - Bomb off? Check the game channel")
+        message = telegram_bot_sendtext("⏰ "+time.strftime('%d-%m-%Y - %H:%M:%S', time.localtime(now)) + " \n💳 - _Account 0" + str(account) + " CRITICAL_\n\n 🛑 - Bomb off? Check the game channel")
         login_attempts = 0
         pyautogui.hotkey('ctrl','f5')
         return
@@ -311,14 +307,14 @@ def login(account):
         #TODO mto ele da erro e poco o botao n abre
         # time.sleep(10)
 
-    if clickBtn(images['select-wallet-2'], timeout=8):
+    if clickBtn(images['select-wallet-2'], timeout = 8):
         # sometimes the sign popup appears imediately
         login_attempts += 1
         # print('sign button clicked')
         # print('{} login attempt'.format(login_attempts))
         if clickBtn(images['treasure-hunt-icon'], timeout = 15):
             # print('sucessfully login, treasure hunt btn clicked')
-            message = telegram_bot_sendtext("Account " + str(account) + "\n\n 🟢 - Sucessfully login")
+            message = telegram_bot_sendtext("⏰ "+time.strftime('%d-%m-%Y - %H:%M:%S', time.localtime(now)) + " \n💳 - _Account 0" + str(account) + "\n\n 🟢 - Sucessfully login")
             login_attempts = 0
         return
         # click ok button
@@ -335,7 +331,7 @@ def login(account):
         # time.sleep(20)
 
     if clickBtn(images['select-wallet-2'], timeout = 20):
-        login_attempts = login_attempts + 1
+        login_attempts += 1
         # print('sign button clicked')
         # print('{} login attempt'.format(login_attempts))
         # time.sleep(25)
@@ -350,8 +346,6 @@ def login(account):
         # print('ok button clicked')
     
     # Message to validate the Online
-    message = telegram_bot_sendtext("\n\nAccount " + str(account) +" - OKAY")
-
 
 def sendHeroesHome():
     if not ch['enable']:
@@ -418,107 +412,6 @@ def refreshHeroes():
     logger('💪 {} heroes sent to work'.format(hero_clicks))
     goToGame()
 
-def balance():
-    global saldo_atual, message
-    pytesseract.pytesseract.tesseract_cmd = "C:\Program Files\Tesseract-OCR\Tesseract.exe"
-    clickBtn(images['chest'])
-
-    i = 10
-    coins_pos = positions(images['coin-icon'], threshold=ct['default'])
-    while(len(coins_pos) == 0):
-        if i <= 0:
-            break
-        i = i - 1
-        coins_pos = positions(images['coin-icon'], threshold=ct['default'])
-        time.sleep(5)
-    
-    if(len(coins_pos) == 0):
-        logger("Saldo não encontrado.")
-        clickBtn(images['x'])
-        return
-
-    # a partir da imagem do bcoin calcula a area do quadrado para print
-    k,l,m,n = coins_pos[0]
-    k -= 44
-    l +=  130
-    m = 200
-    n = 50
-
-    myScreen = pyautogui.screenshot(region=(k, l, m, n))
-    img_dir = os.path.dirname(os.path.realpath(__file__)) + r'\targets\saldo1.png'
-    myScreen.save(img_dir)
-    # Lendo arquivo gerado
-    img = cv2.imread(r"D:\Estudos\UDEMY\GIT\bombcrypto-bot\targets\saldo1.png")
-    # Print resultado
-    print(pytesseract.image_to_string(img))
-    time.sleep(2)
-        
-    clickBtn(images['x'])
-
-def getDifference(then, now=datetime.datetime.now(), interval="horas"):
-
-    duration = now - then
-    duration_in_s = duration.total_seconds()
-
-    # Date and Time constants
-    yr_ct = 365 * 24 * 60 * 60  # 31536000
-    day_ct = 24 * 60 * 60  # 86400
-    hour_ct = 60 * 60  # 3600
-    minute_ct = 60
-
-    def yrs():
-        return divmod(duration_in_s, yr_ct)[0]
-
-    def days():
-        return divmod(duration_in_s, day_ct)[0]
-
-    def hrs():
-        return divmod(duration_in_s, hour_ct)[0]
-
-    def mins():
-        return divmod(duration_in_s, minute_ct)[0]
-
-    def secs():
-        return duration_in_s
-
-    return {
-        "anos": int(yrs()),
-        "dias": int(days()),
-        "horas": int(hrs()),
-        "minutos": int(mins()),
-        "segundos": int(secs()),
-    }[interval]
-
-def timeInTheMap():
-    try:
-        dateStartMap = None
-        way = (os.path.dirname(os.path.realpath(__file__)) + r"D:\Estudos\UDEMY\GIT\bombcrypto-bot\tempo_mapa.txt")
-        with open(way, "r") as text_file:
-            dateStartMap = text_file.readline()
-            if dateStartMap == "":
-                dateStartMap = datetime.now()
-
-            if not isinstance(dateStartMap, datetime):
-                dateStartMap = datetime.strptime(dateStartMap, "%Y-%m-%d %H:%M:%S.%f")
-            interval = "horas"
-            spentHours = getDifference(
-                dateStartMap, now=datetime.now(), interval=interval
-            )
-            if spentHours == 0:
-                interval = "minutos"
-                spentHours = getDifference(dateStartMap, now=datetime.now(), interval=interval)
-            if spentHours == 0:
-                interval = "segundos"
-                spentHours = getDifference(dateStartMap, now=datetime.now(), interval=interval)
-
-            telegram_bot_sendtext(f"It took you {spentHours} {interval} to complete the map")
-        with open(way, "w") as textFileWrite:
-            dateStartMap = datetime.now()
-            textFileWrite.write(str(dateStartMap))
-
-    except:
-        logger("Failed to get map completion time information.")
-
 def main():
     """Main execution setup and loop"""
     # ==Setup==
@@ -551,6 +444,7 @@ def main():
         "heroes" : 0,
         "new_map" : 0,
         "check_for_captcha" : 0,
+        "account_online" : 0,
         "refresh_heroes" : 0
         }
     # =====================
@@ -558,7 +452,8 @@ def main():
         "login" : 0,
         "heroes" : 0,
         "new_map" : 0,
-        "check_for_captcha" : 0,
+        "check_for_captcha" : 0,        
+        "account_online" : 0,
         "refresh_heroes" : 0
         }
     # =====================
@@ -567,6 +462,7 @@ def main():
         "heroes" : 0,
         "new_map" : 0,
         "check_for_captcha" : 0,
+        "account_online" : 0,
         "refresh_heroes" : 0
         }
     # =====================
@@ -577,10 +473,17 @@ def main():
         now3 = time.time()
         
         account = 1
-    
+                        
+        print()
+        
         while account == 1:
             changeAccount(account)
-                                                                    
+            
+            if now - last["account_online"] > addRandomness(t['account_online'] * 60):
+                last["account_online"] = now
+                message = telegram_bot_sendtext("⏰ "+time.strftime('%d-%m-%Y - %H:%M:%S', time.localtime(now)) + " \n\n🚀  _Accounts Online_")
+        
+                
             if now - last["check_for_captcha"] > addRandomness(t['check_for_captcha'] * 60):
                 last["check_for_captcha"] = now
                                
@@ -591,7 +494,7 @@ def main():
             if now - last["login"] > addRandomness(t['check_for_login'] * 60):
                 sys.stdout.flush()
                 last["login"] = now
-                login(account)
+                login(account,now)
 
             if now - last["new_map"] > t['check_for_new_map_button']:
                 last["new_map"] = now
@@ -620,7 +523,7 @@ def main():
             if now2 - last2["login"] > addRandomness(t['check_for_login'] * 60):
                 sys.stdout.flush()
                 last2["login"] = now2
-                login(account)
+                login(account,now)
 
             if now2 - last2["new_map"] > t['check_for_new_map_button']:
                 last2["new_map"] = now2
@@ -649,7 +552,7 @@ def main():
             if now3 - last3["login"] > addRandomness(t['check_for_login'] * 60):
                 sys.stdout.flush()
                 last3["login"] = now3
-                login(account)
+                login(account,now)
 
             if now3 - last3["new_map"] > t['check_for_new_map_button']:
                 last3["new_map"] = now3

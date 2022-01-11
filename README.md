@@ -1,3 +1,10 @@
+Fork do bot mpcabete - https://github.com/mpcabete/bombcrypto-bot
+
+# Minhas atualizações
+
+Implementado a classe TELEGRAM para efetuar o envio de mensagem (Apenas efetua o envio de mensagem de texto)
+Momentaneamente triplicado as funções para rodar em 3 contas ao mesmo tempo (Em breve teremos o refactoring)
+
 # New captcha update:
 
 ### Ta oficialmente terminado!
