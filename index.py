@@ -1,9 +1,10 @@
-# -*- coding: utf-8 -*-    
-from cv2 import cv2
+# Version: 10/01/2022
+
+# -*- coding: utf-8 -*-  
+from cv2 import cv2  
 from telegram import *
-from captcha.solveCaptcha import solveCaptcha
-from os import listdir
 from src.logger import logger, loggerMapClicked
+from os import listdir
 from random import randint
 from random import random
 from datetime import datetime
@@ -17,45 +18,33 @@ import sys
 import yaml
 import datetime
 import cv2
-import pytesseract
-import pygetwindow
 
+# Load config file.
+stream = open("config.yaml", 'r')
+c = yaml.safe_load(stream)
+ct = c['threshold']
+ch = c['home']
+pause = c['time_intervals']['interval_between_moviments']
+pyautogui.PAUSE = pause
 
-# Version: 31/12/2021
+cat = """
+>>---> Press ctrl + c to kill the bot.
+>>---> Some configs can be found in the config.yaml file."""
 
 account = '💳 - _Account 01_'
 #account = '💳 - _Account 02_'
 #account = '💳 - _Account 03_'
-info = """
->>---> Press ctrl + c to kill the bot.
->>---> Some configs can be found in the config.yaml file."""
-
-print(info)
-# message = telegram_bot_sendtext(account + "\n\n 🔌 Bot Started " + ".\n 💰 It's time to earn some BCoins!!!")
-time.sleep(4)
-
-
-
-if __name__ == '__main__':
-    stream = open("config.yaml", 'r')
-    c = yaml.safe_load(stream)
-
-ct = c['threshold']
-ch = c['home']
-
-if not ch['enable']:
-    print('>>---> Home feature not enabled' + '\n')
-
-pause = c['time_intervals']['interval_between_moviments']
-pyautogui.PAUSE = pause
-pyautogui.FAILSAFE = False
-hero_clicks = 0
-login_attempts = 0
-last_log_is_progress = False
-new_maps = 0
-saldo_atual = 0.0
 
 def addRandomness(n, randomn_factor_size=None):
+    """Returns n with randomness
+    Parameters:
+        n (int): A decimal integer
+        randomn_factor_size (int): The maximum value+- of randomness that will be
+            added to n
+    Returns:
+        int: n with randomness
+    """
+
     if randomn_factor_size is None:
         randomness_percentage = 0.1
         randomn_factor_size = randomness_percentage * n
@@ -72,12 +61,20 @@ def moveToWithRandomness(x,y,t):
     pyautogui.moveTo(addRandomness(x,10),addRandomness(y,10),t+random()/2)
 
 def remove_suffix(input_string, suffix):
+    """Returns the input_string without the suffix"""
+
     if suffix and input_string.endswith(suffix):
         return input_string[:-len(suffix)]
     return input_string
 
-def load_images():
-    file_names = listdir('./targets/')
+def load_images(dir_path='./targets/'):
+    """ Programatically loads all images of dir_path as a key:value where the
+        key is the file name without the .png suffix
+    Returns:
+        dict: dictionary containing the loaded images as key:value pairs.
+    """
+
+    file_names = listdir(dir_path)
     targets = {}
     for file in file_names:
         path = 'targets/' + file
@@ -85,9 +82,8 @@ def load_images():
 
     return targets
 
-images = load_images()
-
 def loadHeroesToSendHome():
+    """Loads the images in the path and saves them as a list"""
     file_names = listdir('./targets/heroes-to-send-home')
     heroes = []
     for file in file_names:
@@ -97,29 +93,9 @@ def loadHeroesToSendHome():
     print('>>---> %d heroes that should be sent home loaded' % len(heroes))
     return heroes
 
-if ch['enable']:
-    home_heroes = loadHeroesToSendHome()
-
-# go_work_img = cv2.imread('targets/go-work.png')
-# commom_img = cv2.imread('targets/commom-text.png')
-# arrow_img = cv2.imread('targets/go-back-arrow.png')
-# hero_img = cv2.imread('targets/hero-icon.png')
-# x_button_img = cv2.imread('targets/x.png')
-# teasureHunt_icon_img = cv2.imread('targets/treasure-hunt-icon.png')
-# ok_btn_img = cv2.imread('targets/ok.png')
-# connect_wallet_btn_img = cv2.imread('targets/connect-wallet.png')
-# select_wallet_hover_img = cv2.imread('targets/select-wallet-1-hover.png')
-# select_metamask_no_hover_img = cv2.imread('targets/select-wallet-1-no-hover.png')
-# sign_btn_img = cv2.imread('targets/select-wallet-2.png')
-# new_map_btn_img = cv2.imread('targets/new-map.png')
-# green_bar = cv2.imread('targets/green-bar.png')
-# puzzle_img = cv2.imread('targets/puzzle.png')
-# piece = cv2.imread('targets/piece.png')
-full_stamina = cv2.imread('targets/full-stamina.png')
-robot = cv2.imread('targets/robot.png')
-slider = cv2.imread('targets/slider.png')
-
 def show(rectangles, img = None):
+    """ Show an popup with rectangles showing the rectangles[(x, y, w, h),...]
+        over img or a printSreen if no img provided. Useful for debugging"""
 
     if img is None:
         with mss.mss() as sct:
@@ -133,32 +109,32 @@ def show(rectangles, img = None):
     cv2.imshow('img',img)
     cv2.waitKey(0)
 
-def clickBtn(img,name=None, timeout=3, threshold = ct['default']):
+def clickBtn(img, timeout=3, threshold = ct['default']):
+    """Search for img in the scree, if found moves the cursor over it and clicks.
+    Parameters:
+        img: The image that will be used as an template to find where to click.
+        timeout (int): Time in seconds that it will keep looking for the img before returning with fail
+        threshold(float): How confident the bot needs to be to click the buttons (values from 0 to 1)
+    """
+
     logger(None, progress_indicator=True)
-    if not name is None:
-        pass
-        # print('waiting for "{}" button, timeout of {}s'.format(name, timeout))
     start = time.time()
-    while(True):
+    has_timed_out = False
+    while(not has_timed_out):
         matches = positions(img, threshold=threshold)
+
         if(len(matches)==0):
-            hast_timed_out = time.time()-start > timeout
-            if(hast_timed_out):
-                if not name is None:
-                    pass
-                    # print('timed out')
-                return False
-            # print('button not found yet')
+            has_timed_out = time.time()-start > timeout
             continue
 
         x,y,w,h = matches[0]
         pos_click_x = x+w/2
         pos_click_y = y+h/2
-        # mudar moveto pra w randomness
         moveToWithRandomness(pos_click_x,pos_click_y,1)
         pyautogui.click()
         return True
-        print("THIS SHOULD NOT PRINT")
+
+    return False
 
 def printSreen():
     with mss.mss() as sct:
@@ -239,7 +215,7 @@ def isWorking(bar, buttons):
 
 def clickGreenBarButtons():
     # ele clicka nos q tao trabaiano mas axo q n importa
-    offset = 130
+    offset = 140
 
     green_bars = positions(images['green-bar'], threshold=ct['green_bar'])
     logger('🟩 %d green bars detected' % len(green_bars))
@@ -256,13 +232,15 @@ def clickGreenBarButtons():
         logger('👆 Clicking in %d heroes' % len(not_working_green_bars))
 
     # se tiver botao com y maior que bar y-10 e menor que y+10
+    hero_clicks_cnt = 0
     for (x, y, w, h) in not_working_green_bars:
         # isWorking(y, buttons)
         moveToWithRandomness(x+offset+(w/2),y+(h/2),1)
         pyautogui.click()
         global hero_clicks
         hero_clicks = hero_clicks + 1
-        if hero_clicks > 20:
+        hero_clicks_cnt = hero_clicks_cnt + 1
+        if hero_clicks_cnt > 20:
             logger('⚠️ Too many hero clicks, try to increase the go_to_work_btn threshold')
             return
         #cv2.rectangle(sct_img, (x, y) , (x + w, y + h), (0,255,255),2)
@@ -294,12 +272,10 @@ def goToHeroes():
         global login_attempts
         login_attempts = 0
 
-    solveCaptcha(pause)
     #TODO tirar o sleep quando colocar o pulling
     time.sleep(1)
     clickBtn(images['hero-icon'])
-    time.sleep(1)
-    solveCaptcha(pause)    
+    time.sleep(randint(1,3))
 
 def goToGame():
     # in case of server overload popup
@@ -308,7 +284,7 @@ def goToGame():
     clickBtn(images['x'])
 
     clickBtn(images['treasure-hunt-icon'])
-    
+
 def refreshHeroesPositions():
 
     logger('🔃 Refreshing Heroes Positions')
@@ -317,39 +293,38 @@ def refreshHeroesPositions():
 
     # time.sleep(3)
     clickBtn(images['treasure-hunt-icon'])
-    
-def login():
-    global login_attempts, message    
-    logger('😿 Checking if game has disconnected')
+
+def login(account):
+    global login_attempts, message
+    logger('😿 Checking if game has disconnected')   
 
     if login_attempts > 3:
         logger('🔃 Too many login attempts, refreshing')
-        message = telegram_bot_sendtext(account + "\n\n 🛑 - Bomb off? Check the game channel")
+        message = telegram_bot_sendtext("Account " + str(account) + " - CRITICAL\n\n 🛑 - Bomb off? Check the game channel")
         login_attempts = 0
         pyautogui.hotkey('ctrl','f5')
         return
 
-    if clickBtn(images['connect-wallet'], name='connectWalletBtn', timeout = 10):
+    if clickBtn(images['connect-wallet'], timeout = 10):
         logger('🎉 Connect wallet button detected, logging in!')
-        solveCaptcha(pause)
         login_attempts += 1
         #TODO mto ele da erro e poco o botao n abre
         # time.sleep(10)
 
-    if clickBtn(images['select-wallet-2'], name='sign button', timeout=8):
+    if clickBtn(images['select-wallet-2'], timeout=8):
         # sometimes the sign popup appears imediately
         login_attempts += 1
         # print('sign button clicked')
         # print('{} login attempt'.format(login_attempts))
-        if clickBtn(images['treasure-hunt-icon'], name='teasureHunt', timeout = 15):
+        if clickBtn(images['treasure-hunt-icon'], timeout = 15):
             # print('sucessfully login, treasure hunt btn clicked')
-            message = telegram_bot_sendtext(account + "\n\n 🟢 - Sucessfully login")
+            message = telegram_bot_sendtext("Account " + str(account) + "\n\n 🟢 - Sucessfully login")
             login_attempts = 0
         return
         # click ok button
 
-    if not clickBtn(images['select-wallet-1-no-hover'], name='selectMetamaskBtn'):
-        if clickBtn(images['select-wallet-1-hover'], name='selectMetamaskHoverBtn', threshold  = ct['select_wallet_buttons'] ):
+    if not clickBtn(images['select-wallet-1-no-hover'], ):
+        if clickBtn(images['select-wallet-1-hover'], threshold = ct['select_wallet_buttons'] ):
             pass
             # o ideal era que ele alternasse entre checar cada um dos 2 por um tempo 
             # print('sleep in case there is no metamask text removed')
@@ -359,21 +334,24 @@ def login():
         # print('sleep in case there is no metamask text removed')
         # time.sleep(20)
 
-    if clickBtn(images['select-wallet-2'], name='signBtn', timeout = 20):
-        login_attempts += 1
+    if clickBtn(images['select-wallet-2'], timeout = 20):
+        login_attempts = login_attempts + 1
         # print('sign button clicked')
         # print('{} login attempt'.format(login_attempts))
         # time.sleep(25)
-        if clickBtn(images['treasure-hunt-icon'], name='teasureHunt', timeout=25):
+        if clickBtn(images['treasure-hunt-icon'], timeout=25):
             # print('sucessfully login, treasure hunt btn clicked')
-            message = telegram_bot_sendtext(account + "\n\n 🟢 - Sucessfully login")
             login_attempts = 0
         # time.sleep(15)
 
-    if clickBtn(images['ok'], name='okBtn', timeout=5):
+    if clickBtn(images['ok'], timeout=5):
         pass
         # time.sleep(15)
         # print('ok button clicked')
+    
+    # Message to validate the Online
+    message = telegram_bot_sendtext("\n\nAccount " + str(account) +" - OKAY")
+
 
 def sendHeroesHome():
     if not ch['enable']:
@@ -409,7 +387,7 @@ def sendHeroesHome():
             print('hero already home, or home full(no dark home button)')
 
 def refreshHeroes():
-    logger('🦸 Search for heroes to work')
+    logger('🏢 Search for heroes to work')
 
     goToHeroes()
 
@@ -423,7 +401,7 @@ def refreshHeroes():
     buttonsClicked = 1
     empty_scrolls_attempts = c['scroll_attemps']
 
-    while(empty_scrolls_attempts >0):
+    while(empty_scrolls_attempts > 0):
         if c['select_heroes_mode'] == 'full':
             buttonsClicked = clickFullBarButtons()
         elif c['select_heroes_mode'] == 'green':
@@ -437,7 +415,6 @@ def refreshHeroes():
             empty_scrolls_attempts = empty_scrolls_attempts - 1
         scroll()
         time.sleep(2)
-        
     logger('💪 {} heroes sent to work'.format(hero_clicks))
     goToGame()
 
@@ -477,7 +454,7 @@ def balance():
     time.sleep(2)
         
     clickBtn(images['x'])
-    
+
 def getDifference(then, now=datetime.datetime.now(), interval="horas"):
 
     duration = now - then
@@ -511,7 +488,7 @@ def getDifference(then, now=datetime.datetime.now(), interval="horas"):
         "minutos": int(mins()),
         "segundos": int(secs()),
     }[interval]
-    
+
 def timeInTheMap():
     try:
         dateStartMap = None
@@ -534,9 +511,7 @@ def timeInTheMap():
                 interval = "segundos"
                 spentHours = getDifference(dateStartMap, now=datetime.now(), interval=interval)
 
-            telegram_bot_sendtext(
-                f"It took you {spentHours} {interval} to complete the map"
-            )
+            telegram_bot_sendtext(f"It took you {spentHours} {interval} to complete the map")
         with open(way, "w") as textFileWrite:
             dateStartMap = datetime.now()
             textFileWrite.write(str(dateStartMap))
@@ -545,70 +520,177 @@ def timeInTheMap():
         logger("Failed to get map completion time information.")
 
 def main():
-    global new_maps, message
+    """Main execution setup and loop"""
+    # ==Setup==
+    global hero_clicks
+    global login_attempts
+    global last_log_is_progress
+    global message
+    global new_maps
+    global images
+    hero_clicks = 0
+    login_attempts = 0
+    last_log_is_progress = False
+
+    images = load_images()
+
+    if ch['enable']:
+        global home_heroes
+        home_heroes = loadHeroesToSendHome()
+    else:
+        print('\n')
+        print('>>---> Home feature not enabled')
+
+    print(cat)
     time.sleep(5)
     t = c['time_intervals']
+    
+      
+    last = {
+        "login" : 0,
+        "heroes" : 0,
+        "new_map" : 0,
+        "check_for_captcha" : 0,
+        "refresh_heroes" : 0
+        }
+    # =====================
+    last2 = {
+        "login" : 0,
+        "heroes" : 0,
+        "new_map" : 0,
+        "check_for_captcha" : 0,
+        "refresh_heroes" : 0
+        }
+    # =====================
+    last3 = {
+        "login" : 0,
+        "heroes" : 0,
+        "new_map" : 0,
+        "check_for_captcha" : 0,
+        "refresh_heroes" : 0
+        }
+    # =====================
 
-    windows = []
-    i = 0
-   
-    for w in pygetwindow.getWindowsWithTitle('bombcrypto - Google Chrome'):
-        windows.append({
-            "window": w,
-            "login" : 0,
-            "heroes" : 0,
-            "new_map" : 0,
-            "check_for_captcha" : 0,
-            "posicao" : i,
-            "refresh_heroes" : 0
-            })
-        i+=1
-
-    while True:        
+    while True:
         now = time.time()
+        now2 = time.time()
+        now3 = time.time()
         
-        for last in windows:
-           last["window"].activate()
-           time.sleep(2)    
+        account = 1
+    
+        while account == 1:
+            changeAccount(account)
+                                                                    
+            if now - last["check_for_captcha"] > addRandomness(t['check_for_captcha'] * 60):
+                last["check_for_captcha"] = now
+                               
+            if now - last["heroes"] > addRandomness(t['send_heroes_for_work'] * 60):
+                last["heroes"] = now
+                refreshHeroes()
+
+            if now - last["login"] > addRandomness(t['check_for_login'] * 60):
+                sys.stdout.flush()
+                last["login"] = now
+                login(account)
+
+            if now - last["new_map"] > t['check_for_new_map_button']:
+                last["new_map"] = now
+ 
+                if clickBtn(images['new-map']):
+                    loggerMapClicked()  
+
+            if now - last["refresh_heroes"] > addRandomness( t['refresh_heroes_positions'] * 60):
+                last["refresh_heroes"] = now
+                refreshHeroesPositions()
+
+                #clickBtn(teasureHunt)
+            reduceWindow()
+            account = 2
         
-        if now - last["check_for_captcha"] > addRandomness(t['check_for_captcha'] * 60):
-            last["check_for_captcha"] = now
-            solveCaptcha(pause)
-
-        if now - last["heroes"] > addRandomness(t['send_heroes_for_work'] * 60):
-            last["heroes"] = now
-            refreshHeroes()
-
-        if now - last["login"] > addRandomness(t['check_for_login'] * 60):
-            sys.stdout.flush()
-            last["login"] = now
-            login()
-            
-
-        if now - last["new_map"] > t['check_for_new_map_button']:
-            last["new_map"] = now
-
-            if clickBtn(images['new-map']):
-                loggerMapClicked()
-                timeInTheMap()
-                balance()
-                new_maps += 1
-                message = telegram_bot_sendtext(account + "\n\n 🎉 - Congratullations. You complete more one Map. \n 🗺️ - Total: " + str(new_maps) + " Maps \n 💰 - You have xx BCoins (Comming Soon)")
+        while account == 2:
+            changeAccount(account)
                 
-        if now - last["refresh_heroes"] > addRandomness( t['refresh_heroes_positions'] * 60):
-            solveCaptcha(pause)
-            last["refresh_heroes"] = now
-            refreshHeroesPositions()
+            if now2 - last2["check_for_captcha"] > addRandomness(t['check_for_captcha'] * 60):
+                last2["check_for_captcha"] = now2
+                   
+            if now2 - last2["heroes"] > addRandomness(t['send_heroes_for_work'] * 60):
+                last2["heroes"] = now2
+                refreshHeroes()
 
-        #clickBtn(teasureHunt)
+            if now2 - last2["login"] > addRandomness(t['check_for_login'] * 60):
+                sys.stdout.flush()
+                last2["login"] = now2
+                login(account)
+
+            if now2 - last2["new_map"] > t['check_for_new_map_button']:
+                last2["new_map"] = now2
+ 
+                if clickBtn(images['new-map']):
+                    loggerMapClicked()
+
+            if now2 - last2["refresh_heroes"] > addRandomness( t['refresh_heroes_positions'] * 60):
+                last2["refresh_heroes"] = now2
+                refreshHeroesPositions()
+
+                #clickBtn(teasureHunt)
+            reduceWindow()
+            account = 3
+            
+        while account == 3:
+            changeAccount(account)
+            
+            if now3 - last3["check_for_captcha"] > addRandomness(t['check_for_captcha'] * 60):
+                last3["check_for_captcha"] = now3
+                   
+            if now3 - last3["heroes"] > addRandomness(t['send_heroes_for_work'] * 60):
+                last3["heroes"] = now3
+                refreshHeroes()
+
+            if now3 - last3["login"] > addRandomness(t['check_for_login'] * 60):
+                sys.stdout.flush()
+                last3["login"] = now3
+                login(account)
+
+            if now3 - last3["new_map"] > t['check_for_new_map_button']:
+                last3["new_map"] = now3
+ 
+                if clickBtn(images['new-map']):
+                    loggerMapClicked()                   
+
+            if now3 - last3["refresh_heroes"] > addRandomness( t['refresh_heroes_positions'] * 60):
+                last3["refresh_heroes"] = now3
+                refreshHeroesPositions()
+
+                #clickBtn(teasureHunt)
+            reduceWindow()
+            account = 1
+            
         logger(None, progress_indicator=True)
         sys.stdout.flush()
         time.sleep(1)
 
-main()
+def changeAccount(number):      
+    # maximizar a janela
+    pyautogui.keyDown('win')
+    pyautogui.keyDown(str(number))
+    pyautogui.keyUp('win')
+    pyautogui.keyUp('str(number)')
+    pyautogui.keyDown('alt')
+    pyautogui.keyDown('space')
+    pyautogui.keyUp('alt')
+    pyautogui.keyUp('space')
+    pyautogui.keyDown('x') 
+    pyautogui.keyUp('x') 
+
+def reduceWindow():
+    pyautogui.click(1853,16)
+    time.sleep(15)
+
+if __name__ == '__main__':
+    main()
 
 #cv2.imshow('img',sct_img)
 #cv2.waitKey()
 
 # colocar o botao em pt
-# soh resetar posiçoes se n tiver clickado em newmap em x segundos
+# soh resetar posiçoes se n tiver clickado em newmap em x segundo
